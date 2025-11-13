@@ -94,31 +94,33 @@ const TruthTableCalculator = () => {
       rows.push({ ...values, result });
     }
 
-    // Generate CNF and DNF
+    // Generate CNF and DNF with steps
     const trueRows = rows.filter((row) => row.result);
     const falseRows = rows.filter((row) => !row.result);
 
-    const cnf = falseRows
-      .map((row) =>
-        "(" +
-        variables
-          .map((v) => (row[v] ? `¬${v}` : v))
-          .join(" ∨ ") +
-        ")"
-      )
-      .join(" ∧ ") || "Tautologi";
+    // CNF Steps
+    const cnfSteps = falseRows.map((row, idx) => ({
+      rowNumber: rows.indexOf(row) + 1,
+      values: variables.map(v => ({ var: v, val: row[v] })),
+      clause: "(" + variables.map((v) => (row[v] ? `¬${v}` : v)).join(" ∨ ") + ")"
+    }));
 
-    const dnf = trueRows
-      .map((row) =>
-        "(" +
-        variables
-          .map((v) => (row[v] ? v : `¬${v}`))
-          .join(" ∧ ") +
-        ")"
-      )
-      .join(" ∨ ") || "Kontradiksi";
+    const cnf = cnfSteps.length > 0 
+      ? cnfSteps.map(s => s.clause).join(" ∧ ")
+      : "Tautologi (semua hasil TRUE)";
 
-    setResults({ variables, rows, cnf, dnf });
+    // DNF Steps
+    const dnfSteps = trueRows.map((row, idx) => ({
+      rowNumber: rows.indexOf(row) + 1,
+      values: variables.map(v => ({ var: v, val: row[v] })),
+      clause: "(" + variables.map((v) => (row[v] ? v : `¬${v}`)).join(" ∧ ") + ")"
+    }));
+
+    const dnf = dnfSteps.length > 0
+      ? dnfSteps.map(s => s.clause).join(" ∨ ")
+      : "Kontradiksi (semua hasil FALSE)";
+
+    setResults({ variables, rows, cnf, dnf, cnfSteps, dnfSteps });
   };
 
   return (
@@ -251,14 +253,54 @@ const TruthTableCalculator = () => {
               <TabsContent value="cnf" className="mt-6">
                 <Card className="neon-border bg-primary/10 backdrop-blur-sm border-primary/30">
                   <CardHeader>
-                    <CardTitle className="text-primary">
+                    <CardTitle className="text-primary flex items-center gap-2">
+                      <GitMerge className="w-5 h-5" />
                       Conjunctive Normal Form (CNF)
                     </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-lg font-mono text-foreground bg-secondary/30 p-6 rounded-lg">
-                      {results.cnf}
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Konjungsi (AND) dari disjungsi (OR) - dibentuk dari baris FALSE
                     </p>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {results.cnfSteps && results.cnfSteps.length > 0 ? (
+                      <>
+                        <div className="space-y-3">
+                          <h4 className="font-semibold text-sm text-primary">Langkah-langkah:</h4>
+                          {results.cnfSteps.map((step: any, idx: number) => (
+                            <div key={idx} className="bg-secondary/20 p-4 rounded-lg border border-primary/20 hover:border-primary/40 transition-all">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">
+                                  {idx + 1}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  Baris {step.rowNumber} (FALSE)
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-2 mb-2">
+                                {step.values.map((v: any, i: number) => (
+                                  <span key={i} className="text-xs px-2 py-1 rounded bg-secondary/50">
+                                    {v.var} = {v.val ? "T" : "F"}
+                                  </span>
+                                ))}
+                              </div>
+                              <p className="font-mono text-foreground bg-secondary/50 p-3 rounded">
+                                {step.clause}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="pt-4 border-t border-primary/20">
+                          <h4 className="font-semibold text-sm text-primary mb-3">Hasil Akhir CNF:</h4>
+                          <p className="text-lg font-mono text-foreground bg-secondary/30 p-6 rounded-lg border-2 border-primary/40">
+                            {results.cnf}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-lg font-mono text-foreground bg-secondary/30 p-6 rounded-lg">
+                        {results.cnf}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -266,14 +308,54 @@ const TruthTableCalculator = () => {
               <TabsContent value="dnf" className="mt-6">
                 <Card className="neon-border bg-primary/10 backdrop-blur-sm border-primary/30">
                   <CardHeader>
-                    <CardTitle className="text-primary">
+                    <CardTitle className="text-primary flex items-center gap-2">
+                      <GitBranch className="w-5 h-5" />
                       Disjunctive Normal Form (DNF)
                     </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-lg font-mono text-foreground bg-secondary/30 p-6 rounded-lg">
-                      {results.dnf}
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Disjungsi (OR) dari konjungsi (AND) - dibentuk dari baris TRUE
                     </p>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {results.dnfSteps && results.dnfSteps.length > 0 ? (
+                      <>
+                        <div className="space-y-3">
+                          <h4 className="font-semibold text-sm text-primary">Langkah-langkah:</h4>
+                          {results.dnfSteps.map((step: any, idx: number) => (
+                            <div key={idx} className="bg-secondary/20 p-4 rounded-lg border border-primary/20 hover:border-primary/40 transition-all">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="bg-success text-background w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">
+                                  {idx + 1}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  Baris {step.rowNumber} (TRUE)
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-2 mb-2">
+                                {step.values.map((v: any, i: number) => (
+                                  <span key={i} className="text-xs px-2 py-1 rounded bg-secondary/50">
+                                    {v.var} = {v.val ? "T" : "F"}
+                                  </span>
+                                ))}
+                              </div>
+                              <p className="font-mono text-foreground bg-secondary/50 p-3 rounded">
+                                {step.clause}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="pt-4 border-t border-primary/20">
+                          <h4 className="font-semibold text-sm text-primary mb-3">Hasil Akhir DNF:</h4>
+                          <p className="text-lg font-mono text-foreground bg-secondary/30 p-6 rounded-lg border-2 border-success/40">
+                            {results.dnf}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-lg font-mono text-foreground bg-secondary/30 p-6 rounded-lg">
+                        {results.dnf}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
