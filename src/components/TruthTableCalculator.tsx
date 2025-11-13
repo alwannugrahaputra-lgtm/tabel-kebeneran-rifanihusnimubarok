@@ -77,6 +77,22 @@ const TruthTableCalculator = () => {
     }
   };
 
+  const evaluateClause = (clause: string, values: Record<string, boolean>): boolean => {
+    let expr = clause;
+    Object.keys(values).forEach((variable) => {
+      const regex = new RegExp(variable, "g");
+      expr = expr.replace(regex, values[variable].toString());
+    });
+    expr = expr.replace(/¬/g, "!");
+    expr = expr.replace(/∧/g, "&&");
+    expr = expr.replace(/∨/g, "||");
+    try {
+      return eval(expr);
+    } catch {
+      return false;
+    }
+  };
+
   const generateTruthTable = () => {
     const variables = getVariables(expression);
     if (variables.length === 0) return;
@@ -109,6 +125,13 @@ const TruthTableCalculator = () => {
       ? cnfSteps.map(s => s.clause).join(" ∧ ")
       : "Tautologi (semua hasil TRUE)";
 
+    // Evaluate each CNF clause for each row
+    const cnfEvaluations = rows.map(row => {
+      const clauseResults = cnfSteps.map(step => evaluateClause(step.clause, row));
+      const finalResult = clauseResults.length > 0 ? clauseResults.every(r => r) : true;
+      return { clauseResults, finalResult };
+    });
+
     // DNF Steps
     const dnfSteps = trueRows.map((row, idx) => ({
       rowNumber: rows.indexOf(row) + 1,
@@ -120,7 +143,14 @@ const TruthTableCalculator = () => {
       ? dnfSteps.map(s => s.clause).join(" ∨ ")
       : "Kontradiksi (semua hasil FALSE)";
 
-    setResults({ variables, rows, cnf, dnf, cnfSteps, dnfSteps });
+    // Evaluate each DNF clause for each row
+    const dnfEvaluations = rows.map(row => {
+      const clauseResults = dnfSteps.map(step => evaluateClause(step.clause, row));
+      const finalResult = clauseResults.length > 0 ? clauseResults.some(r => r) : false;
+      return { clauseResults, finalResult };
+    });
+
+    setResults({ variables, rows, cnf, dnf, cnfSteps, dnfSteps, cnfEvaluations, dnfEvaluations });
   };
 
   return (
@@ -264,34 +294,61 @@ const TruthTableCalculator = () => {
                   <CardContent className="space-y-6">
                     {results.cnfSteps && results.cnfSteps.length > 0 ? (
                       <>
-                        <div className="space-y-3">
-                          <h4 className="font-semibold text-sm text-primary">Langkah-langkah:</h4>
-                          {results.cnfSteps.map((step: any, idx: number) => (
-                            <div key={idx} className="bg-secondary/20 p-4 rounded-lg border border-primary/20 hover:border-primary/40 transition-all">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">
-                                  {idx + 1}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  Baris {step.rowNumber} (FALSE)
-                                </span>
-                              </div>
-                              <div className="flex flex-wrap gap-2 mb-2">
-                                {step.values.map((v: any, i: number) => (
-                                  <span key={i} className="text-xs px-2 py-1 rounded bg-secondary/50">
-                                    {v.var} = {v.val ? "T" : "F"}
-                                  </span>
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="border-border hover:bg-secondary/30">
+                                {results.variables.map((variable: string) => (
+                                  <TableHead key={variable} className="text-center font-bold text-primary bg-primary/5">
+                                    {variable}
+                                  </TableHead>
                                 ))}
-                              </div>
-                              <p className="font-mono text-foreground bg-secondary/50 p-3 rounded">
-                                {step.clause}
-                              </p>
-                            </div>
-                          ))}
+                                {results.cnfSteps.map((step: any, idx: number) => (
+                                  <TableHead key={idx} className="text-center font-bold text-primary bg-primary/10 min-w-[120px]">
+                                    {step.clause}
+                                  </TableHead>
+                                ))}
+                                <TableHead className="text-center font-bold text-primary bg-primary/20 min-w-[100px]">
+                                  Hasil CNF
+                                </TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {results.rows.map((row: any, rowIdx: number) => (
+                                <TableRow key={rowIdx} className="border-border hover:bg-secondary/30">
+                                  {results.variables.map((variable: string) => (
+                                    <TableCell key={variable} className="text-center font-semibold bg-secondary/5">
+                                      {row[variable] ? (
+                                        <span className="inline-flex items-center gap-1 text-success font-bold">B</span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 text-destructive font-bold">S</span>
+                                      )}
+                                    </TableCell>
+                                  ))}
+                                  {results.cnfEvaluations[rowIdx].clauseResults.map((clauseResult: boolean, idx: number) => (
+                                    <TableCell key={idx} className="text-center font-semibold bg-secondary/10">
+                                      {clauseResult ? (
+                                        <span className="inline-flex items-center gap-1 text-success font-bold">B</span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 text-destructive font-bold">S</span>
+                                      )}
+                                    </TableCell>
+                                  ))}
+                                  <TableCell className="text-center font-bold bg-primary/5">
+                                    {results.cnfEvaluations[rowIdx].finalResult ? (
+                                      <span className="inline-flex items-center gap-1 text-success font-bold">B</span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-destructive font-bold">S</span>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
                         </div>
-                        <div className="pt-4 border-t border-primary/20">
-                          <h4 className="font-semibold text-sm text-primary mb-3">Hasil Akhir CNF:</h4>
-                          <p className="text-lg font-mono text-foreground bg-secondary/30 p-6 rounded-lg border-2 border-primary/40">
+                        <div className="mt-4 p-4 bg-primary/10 rounded-lg border-2 border-primary/40">
+                          <p className="text-xs text-muted-foreground mb-2">Formula CNF:</p>
+                          <p className="text-lg font-mono text-foreground">
                             {results.cnf}
                           </p>
                         </div>
@@ -319,34 +376,61 @@ const TruthTableCalculator = () => {
                   <CardContent className="space-y-6">
                     {results.dnfSteps && results.dnfSteps.length > 0 ? (
                       <>
-                        <div className="space-y-3">
-                          <h4 className="font-semibold text-sm text-primary">Langkah-langkah:</h4>
-                          {results.dnfSteps.map((step: any, idx: number) => (
-                            <div key={idx} className="bg-secondary/20 p-4 rounded-lg border border-primary/20 hover:border-primary/40 transition-all">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="bg-success text-background w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">
-                                  {idx + 1}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  Baris {step.rowNumber} (TRUE)
-                                </span>
-                              </div>
-                              <div className="flex flex-wrap gap-2 mb-2">
-                                {step.values.map((v: any, i: number) => (
-                                  <span key={i} className="text-xs px-2 py-1 rounded bg-secondary/50">
-                                    {v.var} = {v.val ? "T" : "F"}
-                                  </span>
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="border-border hover:bg-secondary/30">
+                                {results.variables.map((variable: string) => (
+                                  <TableHead key={variable} className="text-center font-bold text-success bg-success/5">
+                                    {variable}
+                                  </TableHead>
                                 ))}
-                              </div>
-                              <p className="font-mono text-foreground bg-secondary/50 p-3 rounded">
-                                {step.clause}
-                              </p>
-                            </div>
-                          ))}
+                                {results.dnfSteps.map((step: any, idx: number) => (
+                                  <TableHead key={idx} className="text-center font-bold text-success bg-success/10 min-w-[120px]">
+                                    {step.clause}
+                                  </TableHead>
+                                ))}
+                                <TableHead className="text-center font-bold text-success bg-success/20 min-w-[100px]">
+                                  Hasil DNF
+                                </TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {results.rows.map((row: any, rowIdx: number) => (
+                                <TableRow key={rowIdx} className="border-border hover:bg-secondary/30">
+                                  {results.variables.map((variable: string) => (
+                                    <TableCell key={variable} className="text-center font-semibold bg-secondary/5">
+                                      {row[variable] ? (
+                                        <span className="inline-flex items-center gap-1 text-success font-bold">B</span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 text-destructive font-bold">S</span>
+                                      )}
+                                    </TableCell>
+                                  ))}
+                                  {results.dnfEvaluations[rowIdx].clauseResults.map((clauseResult: boolean, idx: number) => (
+                                    <TableCell key={idx} className="text-center font-semibold bg-secondary/10">
+                                      {clauseResult ? (
+                                        <span className="inline-flex items-center gap-1 text-success font-bold">B</span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 text-destructive font-bold">S</span>
+                                      )}
+                                    </TableCell>
+                                  ))}
+                                  <TableCell className="text-center font-bold bg-success/5">
+                                    {results.dnfEvaluations[rowIdx].finalResult ? (
+                                      <span className="inline-flex items-center gap-1 text-success font-bold">B</span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-destructive font-bold">S</span>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
                         </div>
-                        <div className="pt-4 border-t border-primary/20">
-                          <h4 className="font-semibold text-sm text-primary mb-3">Hasil Akhir DNF:</h4>
-                          <p className="text-lg font-mono text-foreground bg-secondary/30 p-6 rounded-lg border-2 border-success/40">
+                        <div className="mt-4 p-4 bg-success/10 rounded-lg border-2 border-success/40">
+                          <p className="text-xs text-muted-foreground mb-2">Formula DNF:</p>
+                          <p className="text-lg font-mono text-foreground">
                             {results.dnf}
                           </p>
                         </div>
