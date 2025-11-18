@@ -21,13 +21,13 @@ interface LogicOperator {
 }
 
 const operators: LogicOperator[] = [
-  { symbol: "¬", label: "NOT", icon: <XCircle className="w-4 h-4" />, value: "!" },
-  { symbol: "∧", label: "AND", icon: <GitMerge className="w-4 h-4" />, value: "&&" },
-  { symbol: "∨", label: "OR", icon: <GitBranch className="w-4 h-4" />, value: "||" },
+  { symbol: "~", label: "NOT", icon: <XCircle className="w-4 h-4" />, value: "~" },
+  { symbol: "∧", label: "AND", icon: <GitMerge className="w-4 h-4" />, value: "∧" },
+  { symbol: "∨", label: "OR", icon: <GitBranch className="w-4 h-4" />, value: "∨" },
   { symbol: "→", label: "IF THEN", icon: <ArrowRight className="w-4 h-4" />, value: "→" },
-  { symbol: "↔", label: "IFF", icon: <ArrowLeftRight className="w-4 h-4" />, value: "↔" },
+  { symbol: "↔", label: "IF", icon: <ArrowLeftRight className="w-4 h-4" />, value: "↔" },
   { symbol: "⊕", label: "XOR", icon: <Zap className="w-4 h-4" />, value: "⊕" },
-  { symbol: "↑", label: "NAND", icon: <Circle className="w-4 h-4" />, value: "↑" },
+  { symbol: "↑", label: "NAND", icon: <Circle className="w-4 h-4" />, value: "|" },
   { symbol: "↓", label: "NOR", icon: <Circle className="w-4 h-4 fill-current" />, value: "↓" },
 ];
 
