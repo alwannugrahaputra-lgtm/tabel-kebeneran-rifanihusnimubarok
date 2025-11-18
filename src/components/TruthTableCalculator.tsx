@@ -32,7 +32,7 @@ const operators: LogicOperator[] = [
 ];
 
 const TruthTableCalculator = () => {
-  const [expression, setExpression] = useState("(A && !B) || C");
+  const [expression, setExpression] = useState("(A ∧ ~B) V C");
   const [results, setResults] = useState<any>(null);
 
   const insertOperator = (op: string) => {
